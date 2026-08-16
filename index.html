@@ -41,7 +41,7 @@
     letter-spacing: 2px;
     text-transform: uppercase;
     margin-top: 10px;
-    margin-bottom: 56px;
+    margin-bottom: 20px;
   }
 
   .orb {
@@ -105,6 +105,28 @@
     color: var(--white);
     margin-bottom: 6px;
   }
+
+  /* Small controls area (keeps UI uncluttered) */
+  .mini-controls {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  select, .btn-small {
+    background: transparent;
+    color: var(--white);
+    border: 1px solid var(--line);
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .btn-small { cursor: pointer; }
+  .hidden { display: none; }
+  .voice-warning { color: #ffcc00; font-size: 12px; margin-top: 8px; text-align:center; }
 </style>
 </head>
 <body>
@@ -112,11 +134,18 @@
   <h1>MIT</h1>
   <div class="sub">toca para hablar</div>
 
-  <div class="orb" id="orb">
+  <div class="orb" id="orb" title="Hablar / Escuchar">
     <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
   </div>
 
   <div id="status">en espera</div>
+
+  <!-- Small controls kept convenient and optional -->
+  <div class="mini-controls" id="miniControls">
+    <select id="voiceSelect" title="Selecciona la voz"></select>
+    <button class="btn-small" id="stopBtn" title="Detener lectura">Parar</button>
+  </div>
+  <div class="voice-warning hidden" id="voiceWarning">No se han encontrado voces en español; el navegador usará la voz por defecto.</div>
 
   <div class="panel" id="panel">
     <div class="mit-label">Mit</div>
@@ -133,6 +162,10 @@
     const statusEl = document.getElementById('status');
     const panel = document.getElementById('panel');
 
+    const voiceSelect = document.getElementById('voiceSelect');
+    const stopBtn = document.getElementById('stopBtn');
+    const voiceWarningEl = document.getElementById('voiceWarning');
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition;
     if (SpeechRecognition) {
@@ -142,41 +175,148 @@
       recognition.maxAlternatives = 1;
     }
 
-    // --- Selección de voz masculina / grave, estilo JARVIS ---
+    // --- TTS management with improved behavior (no overlapping, better voice pick) ---
     let voices = [];
-    function loadVoices() { voices = speechSynthesis.getVoices(); }
+    let currentUtterance = null;
+
+    function loadVoices() {
+      voices = speechSynthesis.getVoices() || [];
+      populateVoiceList();
+    }
+
+    function populateVoiceList() {
+      voiceSelect.innerHTML = '';
+      if (!voices.length) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No voices';
+        voiceSelect.appendChild(opt);
+        voiceWarningEl.classList.remove('hidden');
+        return;
+      }
+
+      // Prefer Spanish voices first
+      const spanish = voices.filter(v => /es(-|_)?/i.test(v.lang));
+      const others = voices.filter(v => !/es(-|_)?/i.test(v.lang));
+      const list = spanish.length ? spanish.concat(others) : voices.slice();
+
+      list.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.name;
+        opt.textContent = `${v.name} — ${v.lang}`;
+        voiceSelect.appendChild(opt);
+      });
+
+      // Try to auto-select a masculine/Spanish voice heuristically
+      const saved = localStorage.getItem('mit_voice');
+      if (saved && list.find(x => x.name === saved)) {
+        voiceSelect.value = saved;
+      } else {
+        const prefer = list.find(v => /pablo|jorge|diego|david|male|hombre/i.test(v.name) && /es/i.test(v.lang))
+                       || list.find(v => /google/i.test(v.name) && /es/i.test(v.lang))
+                       || list.find(v => /es/i.test(v.lang))
+                       || list[0];
+        if (prefer) voiceSelect.value = prefer.name;
+        localStorage.setItem('mit_voice', voiceSelect.value);
+      }
+
+      voiceWarningEl.classList.toggle('hidden', spanish.length > 0);
+    }
+
     loadVoices();
     if (typeof speechSynthesis !== 'undefined') {
       speechSynthesis.onvoiceschanged = loadVoices;
     }
 
+    voiceSelect.addEventListener('change', () => {
+      localStorage.setItem('mit_voice', voiceSelect.value);
+    });
+
+    stopBtn.addEventListener('click', () => {
+      stopSpeaking();
+    });
+
     function pickVoice() {
-      // Busca voces españolas con nombre típico masculino
-      const masculina = voices.find(v => /es/i.test(v.lang) && /(pablo|jorge|diego|male|hombre)/i.test(v.name));
-      if (masculina) return masculina;
-      // Si no hay, cualquier voz en español
-      return voices.find(v => /es/i.test(v.lang)) || null;
+      const name = voiceSelect.value;
+      if (!name) return null;
+      return voices.find(v => v.name === name) || null;
+    }
+
+    function stopSpeaking() {
+      try {
+        if (speechSynthesis.speaking || speechSynthesis.pending) {
+          speechSynthesis.cancel();
+        }
+        currentUtterance = null;
+        // only update status if not listening
+        if (!orb.classList.contains('listening')) statusEl.textContent = 'en espera';
+      } catch (e) {
+        console.error('stopSpeaking error', e);
+      }
     }
 
     function speak(text) {
+      // Immediately cancel any existing utterance so reads don't overlap
+      stopSpeaking();
+
+      if (!('speechSynthesis' in window)) {
+        console.warn('TTS no soportado en este navegador.');
+        statusEl.textContent = 'voz no soportada';
+        return;
+      }
+
       const utter = new SpeechSynthesisUtterance(text);
-      utter.lang = 'es-ES';
-      utter.pitch = 0.7;   // más grave
+      const selected = pickVoice();
+      if (selected) {
+        utter.voice = selected;
+        utter.lang = selected.lang || 'es-ES';
+      } else {
+        utter.lang = 'es-ES';
+      }
+      // Tweak for deeper voice feeling
+      utter.pitch = 0.7;
       utter.rate = 0.98;
-      const voice = pickVoice();
-      if (voice) utter.voice = voice;
+      utter.volume = 1;
+
+      utter.onstart = () => {
+        currentUtterance = utter;
+        statusEl.textContent = 'hablando';
+      };
+      utter.onend = () => {
+        if (currentUtterance === utter) currentUtterance = null;
+        if (!orb.classList.contains('listening')) statusEl.textContent = 'en espera';
+      };
+      utter.onerror = (e) => {
+        console.error('TTS error', e);
+        if (currentUtterance === utter) currentUtterance = null;
+        statusEl.textContent = 'error';
+      };
+
+      // Speak (single utterance after cancel)
       speechSynthesis.speak(utter);
+    }
+
+    // --- UI helpers ---
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
     }
 
     function renderPanel(you, mit) {
       panel.innerHTML = `
-        ${you ? `<div class="you">Tú</div><div class="you-text">${you}</div>` : ''}
+        ${you ? `<div class="you">Tú</div><div class="you-text">${escapeHtml(you)}</div>` : ''}
         <div class="mit-label">Mit</div>
-        <div>${mit}</div>
+        <div>${escapeHtml(mit)}</div>
       `;
     }
 
+    // --- Networking / voice->worker ---
     async function sendToMit(promptText) {
+      // stop any playback while we send/await to keep conversation natural
+      stopSpeaking();
+
       renderPanel(promptText, 'Procesando...');
       statusEl.textContent = 'procesando';
 
@@ -192,26 +332,97 @@
         statusEl.textContent = 'en espera';
         speak(respuesta);
       } catch (err) {
-        renderPanel(promptText, `Error de conexión: ${err.message}`);
+        renderPanel(promptText, `Error de conexión: ${err.message || err}`);
         statusEl.textContent = 'error';
       }
     }
 
+    // --- Speech recognition handlers ---
     orb.addEventListener('click', () => {
       if (!recognition) {
         statusEl.textContent = 'voz no soportada — usa Chrome';
         return;
       }
+      // If TTS is playing, stop it before listening
+      stopSpeaking();
+
       orb.classList.add('listening');
       statusEl.textContent = 'escuchando...';
-      recognition.start();
+      try {
+        recognition.start();
+      } catch (e) {
+        // In some browsers repeated starts can throw; ensure state consistent
+        console.error('recognition start error', e);
+      }
     });
 
     if (recognition) {
-      recognition.onresult = (event) => sendToMit(event.results[0][0].transcript);
-      recognition.onerror = () => { statusEl.textContent = 'no te he oído bien'; };
-      recognition.onend = () => orb.classList.remove('listening');
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        // ensure listening visual state cleared; sendToMit will set processing state
+        orb.classList.remove('listening');
+        sendToMit(transcript);
+      };
+      recognition.onerror = (ev) => {
+        console.error('recognition error', ev);
+        orb.classList.remove('listening');
+        statusEl.textContent = 'no te he oído bien';
+      };
+      recognition.onend = () => {
+        orb.classList.remove('listening');
+        // if not speaking, go to espera
+        if (!currentUtterance) statusEl.textContent = 'en espera';
+      };
+      recognition.onstart = () => {
+        // stop any TTS when recognition actually starts
+        stopSpeaking();
+      };
     }
+
+    // Also stop speaking when user presses orb (mousedown) so the listen action is clear
+    orb.addEventListener('mousedown', () => {
+      stopSpeaking();
+    });
+
+    // Accessibility: space to toggle listening, escape to stop speech
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (!recognition) return;
+        if (orb.classList.contains('listening')) {
+          try { recognition.stop(); } catch {}
+        } else {
+          orb.click();
+        }
+      }
+      if (e.code === 'Escape') stopSpeaking();
+    });
+
+    // Ensure voice selection persists and voices are loaded
+    (function init() {
+      const saved = localStorage.getItem('mit_voice');
+      if (saved) {
+        // will be applied when populateVoiceList runs and finds it
+      }
+    })();
+
+    // Persist voice selection on change
+    voiceSelect.addEventListener('change', () => {
+      localStorage.setItem('mit_voice', voiceSelect.value);
+    });
+
+    // On load, try to preselect saved voice (voices may come later)
+    window.addEventListener('load', () => {
+      const saved = localStorage.getItem('mit_voice');
+      if (saved) {
+        // try to set it after a brief delay if voices arrive later
+        setTimeout(() => {
+          const opt = Array.from(voiceSelect.options).find(o => o.value === saved);
+          if (opt) voiceSelect.value = saved;
+        }, 500);
+      }
+    });
+
   </script>
 </body>
 </html>
