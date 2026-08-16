@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>MIT</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -66,7 +66,7 @@
     box-shadow: 0 0 0 rgba(255,255,255,0.4);
   }
   @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.35); }
+    0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.35); }
     50% { box-shadow: 0 0 0 18px rgba(255,255,255,0); }
   }
 
@@ -127,7 +127,7 @@
     width:100%;
   }
   .fallback-input input[type="text"] {
-    width: calc(100% - 100px);
+    width: calc(100% - 110px);
     max-width:420px;
     padding:8px 10px;
     border-radius:8px;
@@ -155,6 +155,7 @@
     font-size: 13px;
   }
   .voice-warning { color: #ffcc00; font-size: 12px; margin-top: 8px; text-align:center; }
+  .retry-btn { margin-left:8px; border-color: var(--accent); color: var(--accent); }
 </style>
 </head>
 <body>
@@ -171,6 +172,7 @@
   <div class="mini-controls" id="miniControls">
     <select id="voiceSelect" title="Selecciona la voz"></select>
     <button class="btn" id="stopBtn" title="Detener lectura">Parar</button>
+    <button class="btn retry-btn hidden" id="retryBtn" title="Reintentar última pregunta">Reintentar</button>
   </div>
   <div class="voice-warning hidden" id="voiceWarning">No se han encontrado voces en español; el navegador usará la voz por defecto.</div>
 
@@ -194,6 +196,7 @@
     const USER_ID = '1121764396532781207';
     const CHANNEL_ID = '1536519525489573928';
 
+    // UI elements
     const orb = document.getElementById('orb');
     const statusEl = document.getElementById('status');
     const panel = document.getElementById('panel');
@@ -204,6 +207,7 @@
     const noteUnsupported = document.getElementById('noteUnsupported');
     const voiceSelect = document.getElementById('voiceSelect');
     const voiceWarningEl = document.getElementById('voiceWarning');
+    const retryBtn = document.getElementById('retryBtn');
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -215,72 +219,50 @@
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
     } else {
-      // show fallback UI
       fallbackInput.classList.remove('hidden');
       noteUnsupported.classList.remove('hidden');
     }
 
-    // --- TTS management ---
+    // TTS & voices
     let voices = [];
     let currentUtterance = null;
-
-    function loadVoices() {
-      voices = speechSynthesis.getVoices() || [];
-      populateVoiceList();
-    }
-
+    let lastPrompt = ''; // for retry
+    function loadVoices() { voices = speechSynthesis.getVoices() || []; populateVoiceList(); }
     function populateVoiceList() {
       voiceSelect.innerHTML = '';
       if (!voices.length) {
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = 'No voices';
-        voiceSelect.appendChild(opt);
+        const opt = document.createElement('option'); opt.value = ''; opt.textContent = 'No voices'; voiceSelect.appendChild(opt);
         voiceWarningEl.classList.remove('hidden');
         return;
       }
-
       const spanish = voices.filter(v => /es(-|_)?/i.test(v.lang));
       const others = voices.filter(v => !/es(-|_)?/i.test(v.lang));
       const list = spanish.length ? spanish.concat(others) : voices.slice();
-
       list.forEach(v => {
         const opt = document.createElement('option');
         opt.value = v.name;
         opt.textContent = `${v.name} — ${v.lang}`;
         voiceSelect.appendChild(opt);
       });
-
       const saved = localStorage.getItem('mit_voice');
-      if (saved && list.find(x => x.name === saved)) {
-        voiceSelect.value = saved;
-      } else {
+      if (saved && list.find(x => x.name === saved)) voiceSelect.value = saved;
+      else {
         const prefer = list.find(v => /pablo|jorge|diego|david|male|hombre/i.test(v.name) && /es/i.test(v.lang))
-                       || list.find(v => /google/i.test(v.name) && /es/i.test(v.lang))
-                       || list.find(v => /es/i.test(v.lang))
-                       || list[0];
+                    || list.find(v => /google/i.test(v.name) && /es/i.test(v.lang))
+                    || list.find(v => /es/i.test(v.lang))
+                    || list[0];
         if (prefer) voiceSelect.value = prefer.name;
         if (voiceSelect.value) localStorage.setItem('mit_voice', voiceSelect.value);
       }
-
       voiceWarningEl.classList.toggle('hidden', spanish.length > 0);
     }
-
     loadVoices();
-    if (typeof speechSynthesis !== 'undefined') {
-      speechSynthesis.onvoiceschanged = loadVoices;
-    }
-
-    voiceSelect.addEventListener('change', () => {
-      localStorage.setItem('mit_voice', voiceSelect.value);
-    });
+    if (typeof speechSynthesis !== 'undefined') speechSynthesis.onvoiceschanged = loadVoices;
+    voiceSelect.addEventListener('change', () => localStorage.setItem('mit_voice', voiceSelect.value));
 
     function pickVoice() {
       const name = voiceSelect.value;
-      if (name) {
-        const v = voices.find(x => x.name === name);
-        if (v) return v;
-      }
+      if (name) { const v = voices.find(x => x.name === name); if (v) return v; }
       const masculina = voices.find(v => /es/i.test(v.lang) && /(pablo|jorge|diego|male|hombre|david)/i.test(v.name));
       if (masculina) return masculina;
       return voices.find(v => /es/i.test(v.lang)) || null;
@@ -312,9 +294,11 @@
       panel.innerHTML = `${you ? `<div class="you">Tú</div><div class="you-text">${escapeHtml(you)}</div>` : ''}<div class="mit-label">Mit</div><div>${escapeHtml(mit)}</div>`;
     }
 
-    // --- Send to worker ---
-    async function sendToMit(promptText) {
+    // Send to worker + manage retry heuristics
+    async function sendToMit(promptText, { saveLast=true } = {}) {
+      if (saveLast) lastPrompt = promptText;
       stopSpeaking();
+      retryBtn.classList.add('hidden');
       renderPanel(promptText, 'Procesando...');
       statusEl.textContent = 'procesando';
       try {
@@ -327,6 +311,17 @@
         const respuesta = data.responseText || 'No he podido procesar eso.';
         renderPanel(promptText, respuesta);
         statusEl.textContent = 'en espera';
+
+        // If response is too generic, show retry control
+        const genericResponses = ['entendido.', 'entendido', 'ok', 'vale', 'de acuerdo'];
+        const normalized = (respuesta || '').trim().toLowerCase();
+        if (genericResponses.includes(normalized) || normalized.length < 10) {
+          // show retry button so user can ask again quickly
+          retryBtn.classList.remove('hidden');
+        } else {
+          retryBtn.classList.add('hidden');
+        }
+
         speak(respuesta);
       } catch (err) {
         renderPanel(promptText, `Error de conexión: ${err.message || err}`);
@@ -334,14 +329,17 @@
       }
     }
 
-    // --- Recognition startup with robust handling ---
+    // Start recognition robustly
     async function startRecognition() {
       if (!recognition) return;
       stopSpeaking();
       orb.classList.add('listening');
       statusEl.textContent = 'escuchando...';
       try {
-        recognition.start();
+        // call start asynchronously to avoid some mobile browser gesture issues
+        setTimeout(() => {
+          try { recognition.start(); } catch (e) { console.warn('recognition.start error (inner):', e); }
+        }, 0);
       } catch (err) {
         console.warn('recognition.start() threw:', err);
         orb.classList.remove('listening');
@@ -354,16 +352,18 @@
       }
     }
 
-    // Use pointerdown/touchstart for better mobile reliability + click fallback
+    // Use pointerup / touchend + click fallback
     function attachStartHandlers() {
-      orb.addEventListener('pointerdown', (e) => {
+      orb.addEventListener('pointerup', (e) => {
         e.preventDefault();
         if (!recognition) {
           if (!fallbackInput.classList.contains('hidden')) typedInput.focus();
           return;
         }
-        startRecognition();
-      });
+        if (!orb.classList.contains('listening')) startRecognition();
+      }, { passive: false });
+
+      // older browsers
       orb.addEventListener('click', (e) => {
         e.preventDefault();
         if (!recognition) {
@@ -375,11 +375,12 @@
     }
     attachStartHandlers();
 
+    // recognition events
     if (recognition) {
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         orb.classList.remove('listening');
-        sendToMit(transcript);
+        sendToMit(transcript, { saveLast: true });
       };
       recognition.onerror = (ev) => {
         console.error('recognition error', ev);
@@ -398,11 +399,11 @@
       };
     }
 
-    // Stop button
+    // Stop button: stop recognition or TTS
     stopBtn.addEventListener('click', () => {
       try {
         if (recognition && orb.classList.contains('listening')) {
-          try { recognition.stop(); } catch {}
+          try { recognition.stop(); } catch(e) {}
           orb.classList.remove('listening');
           statusEl.textContent = 'en espera';
         } else {
@@ -411,20 +412,37 @@
       } catch (e) { console.error(e); }
     });
 
-    // Fallback typed input
+    // Typed fallback
     typedSend.addEventListener('click', () => {
       const text = (typedInput.value || '').trim();
       if (!text) return;
       typedInput.value = '';
-      sendToMit(text);
+      sendToMit(text, { saveLast: true });
     });
     typedInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') typedSend.click();
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        typedSend.click();
+      }
     });
 
-    // Keyboard shortcuts
+    // Retry last prompt
+    retryBtn.addEventListener('click', () => {
+      if (!lastPrompt) return;
+      sendToMit(lastPrompt, { saveLast: false });
+      retryBtn.classList.add('hidden');
+    });
+
+    // Keyboard shortcuts: only when focus is not in an input/textarea/contenteditable
     window.addEventListener('keydown', (e) => {
+      const target = document.activeElement;
+      const tag = target && target.tagName ? target.tagName.toLowerCase() : null;
+      const editable = target && (target.isContentEditable === true);
+      const focusIsTextField = tag === 'input' || tag === 'textarea' || editable;
+
       if (e.code === 'Space') {
+        // if user typing in a field, don't intercept space
+        if (focusIsTextField) return;
         e.preventDefault();
         if (!recognition) {
           if (!fallbackInput.classList.contains('hidden')) typedInput.focus();
@@ -436,16 +454,23 @@
           startRecognition();
         }
       }
-      if (e.code === 'Escape') stopSpeaking();
+
+      if (e.code === 'Escape') {
+        stopSpeaking();
+        // also stop recognition if running
+        if (recognition && orb.classList.contains('listening')) {
+          try { recognition.stop(); } catch {}
+          orb.classList.remove('listening');
+        }
+      }
     });
 
-    // On load: show fallback if unsupported
+    // On load: show fallback if unsupported; restore saved voice
     window.addEventListener('load', () => {
       if (!recognitionSupported) {
         noteUnsupported.classList.remove('hidden');
         fallbackInput.classList.remove('hidden');
       }
-      // preselect saved voice if any
       const saved = localStorage.getItem('mit_voice');
       if (saved) {
         setTimeout(() => {
@@ -454,6 +479,10 @@
         }, 500);
       }
     });
+
+    // Optional: expose a manual test to check worker connectivity (dev)
+    // window.__mit_test = async (txt) => { return await sendToMit(txt || 'ping'); };
+
   </script>
 </body>
 </html>
