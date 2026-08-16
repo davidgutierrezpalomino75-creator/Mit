@@ -133,7 +133,7 @@
       return r;
     }
 
-    // TTS & voces
+    // TTS & voices
     let voices = [];
     let currentUtterance = null;
     let lastPrompt = '';
@@ -179,25 +179,101 @@
       return voices.find(v => /es/i.test(v.lang)) || null;
     }
 
+    // TTS unlock + robust speak
+    let ttsUnlocked = false;
+    function unlockTTSOnce() {
+      if (ttsUnlocked) return;
+      ttsUnlocked = true;
+      try {
+        const test = new SpeechSynthesisUtterance('.');
+        speechSynthesis.speak(test);
+        setTimeout(() => {
+          try { speechSynthesis.cancel(); } catch (e) {}
+        }, 60);
+      } catch (e) {
+        console.warn('unlockTTS failed', e);
+      }
+    }
+
+    ['pointerdown', 'touchend', 'click'].forEach(evt => {
+      document.addEventListener(evt, function _onceForTTS(e) {
+        unlockTTSOnce();
+        // keep listener (some browsers need multiple events); that's okay
+      }, { passive: true, capture: true });
+    });
+
+    function waitForVoices(timeout = 1200) {
+      return new Promise((resolve) => {
+        const v = speechSynthesis.getVoices();
+        if (v && v.length) return resolve(v);
+        let resolved = false;
+        const onChange = () => {
+          if (resolved) return;
+          const voicesNow = speechSynthesis.getVoices();
+          if (voicesNow && voicesNow.length) {
+            resolved = true;
+            speechSynthesis.removeEventListener('voiceschanged', onChange);
+            resolve(voicesNow);
+          }
+        };
+        speechSynthesis.addEventListener('voiceschanged', onChange);
+        setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            speechSynthesis.removeEventListener('voiceschanged', onChange);
+            resolve(speechSynthesis.getVoices() || []);
+          }
+        }, timeout);
+      });
+    }
+
+    async function speak(text) {
+      stopSpeaking();
+      if (!('speechSynthesis' in window)) { statusEl.textContent = 'voz no soportada'; return; }
+
+      if (!ttsUnlocked) {
+        try { unlockTTSOnce(); } catch (e) {}
+      }
+
+      const available = await waitForVoices(1200);
+      voices = available.length ? available : speechSynthesis.getVoices() || voices;
+
+      const utter = new SpeechSynthesisUtterance(text);
+
+      let voice = null;
+      try {
+        if (voiceSelect && voiceSelect.value) {
+          voice = (voices || []).find(v => v.name === voiceSelect.value) || null;
+        }
+        if (!voice) {
+          voice = (voices || []).find(v => /es(-|_)?/i.test(v.lang)) || (voices || [])[0] || null;
+        }
+        if (voice) { utter.voice = voice; utter.lang = voice.lang || 'es-ES'; }
+        else utter.lang = 'es-ES';
+      } catch (e) {
+        console.warn('voice pick error', e);
+        utter.lang = 'es-ES';
+      }
+
+      utter.pitch = 0.7; utter.rate = 0.98; utter.volume = 1;
+      utter.onstart = () => { currentUtterance = utter; statusEl.textContent = 'hablando'; };
+      utter.onend = () => { if (currentUtterance === utter) currentUtterance = null; if (!orb.classList.contains('listening')) statusEl.textContent = 'en espera'; };
+      utter.onerror = (e) => { console.error('TTS error', e); if (currentUtterance === utter) currentUtterance = null; statusEl.textContent = 'error'; };
+
+      try {
+        speechSynthesis.speak(utter);
+      } catch (e) {
+        console.error('speechSynthesis.speak threw', e);
+        statusEl.textContent = 'error TTS';
+      }
+    }
+
     function stopSpeaking() {
       try {
         if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
         currentUtterance = null;
         if (!orb.classList.contains('listening')) statusEl.textContent = 'en espera';
       } catch (e) { console.error('stopSpeaking error', e); }
-    }
-
-    function speak(text) {
-      stopSpeaking();
-      if (!('speechSynthesis' in window)) { statusEl.textContent = 'voz no soportada'; return; }
-      const utter = new SpeechSynthesisUtterance(text);
-      const voice = pickVoice();
-      if (voice) { utter.voice = voice; utter.lang = voice.lang || 'es-ES'; } else utter.lang = 'es-ES';
-      utter.pitch = 0.7; utter.rate = 0.98; utter.volume = 1;
-      utter.onstart = () => { currentUtterance = utter; statusEl.textContent = 'hablando'; };
-      utter.onend = () => { if (currentUtterance === utter) currentUtterance = null; if (!orb.classList.contains('listening')) statusEl.textContent = 'en espera'; };
-      utter.onerror = (e) => { console.error('TTS error', e); if (currentUtterance === utter) currentUtterance = null; statusEl.textContent = 'error'; };
-      speechSynthesis.speak(utter);
     }
 
     function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -332,20 +408,18 @@
     let recording = false;
     let preferredMime = null;
 
-    // Detect best mime type for MediaRecorder
     if (typeof MediaRecorder !== 'undefined') {
       const mimeCandidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/wav'];
       for (const m of mimeCandidates) {
         try {
           if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) { preferredMime = m; break; }
-        } catch { /* ignore */ }
+        } catch { }
       }
     }
 
     async function startRecording() {
       try {
         audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Prefer explicit mime if supported
         if (preferredMime) mediaRecorder = new MediaRecorder(audioStream, { mimeType: preferredMime });
         else mediaRecorder = new MediaRecorder(audioStream);
         audioChunks = [];
@@ -354,15 +428,12 @@
           recordIndicator.classList.add('hidden');
           stopRecordBtn.classList.add('hidden');
           recording = false;
-          // prefer extension based on mime
           const blobType = mediaRecorder && mediaRecorder.mimeType ? mediaRecorder.mimeType : 'audio/webm';
-          const ext = blobType.includes('ogg') ? 'ogg' : blobType.includes('wav') ? 'wav' : 'webm';
           const blob = new Blob(audioChunks, { type: blobType });
           audioChunks = [];
           try { audioStream.getTracks().forEach(t => t.stop()); } catch {}
           audioStream = null;
           mediaRecorder = null;
-          // send with language hint
           await uploadAudioAndProcess(blob, 'es');
         };
         mediaRecorder.start();
