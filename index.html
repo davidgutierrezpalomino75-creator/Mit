@@ -28,134 +28,37 @@
     padding: 32px 20px;
   }
 
-  h1 {
-    font-weight: 700;
-    font-size: 56px;
-    letter-spacing: 4px;
-    margin: 0;
-    line-height: 1;
-  }
-  .sub {
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--gray);
-    font-size: 12px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-top: 10px;
-    margin-bottom: 20px;
-  }
+  h1 { font-weight: 700; font-size: 56px; letter-spacing: 4px; margin: 0; line-height: 1; }
+  .sub { font-family: 'JetBrains Mono', monospace; color: var(--gray); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin-top: 10px; margin-bottom: 20px; }
 
   .orb {
-    width: 132px;
-    height: 132px;
-    border-radius: 50%;
-    border: 2px solid var(--white);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.3s ease;
-    touch-action: manipulation;
+    width: 132px; height: 132px; border-radius: 50%; border: 2px solid var(--white);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.3s ease; touch-action: manipulation;
   }
-  .orb:active { transform: scale(0.98); }
-  .orb:hover { transform: scale(1.03); }
+  .orb:active { transform: scale(0.98); } .orb:hover { transform: scale(1.03); }
   .orb svg { width: 40px; height: 40px; fill: var(--white); }
 
-  .orb.listening {
-    animation: pulse 1s ease-in-out infinite;
-    box-shadow: 0 0 0 rgba(255,255,255,0.4);
-  }
-  @keyframes pulse {
-    0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.35); }
-    50% { box-shadow: 0 0 0 18px rgba(255,255,255,0); }
-  }
+  .orb.listening { animation: pulse 1s ease-in-out infinite; box-shadow: 0 0 0 rgba(255,255,255,0.4); }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.35); } 50% { box-shadow: 0 0 0 18px rgba(255,255,255,0); } }
 
-  #status {
-    margin-top: 12px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--gray);
-    min-height: 18px;
-    text-align: center;
-  }
+  #status { margin-top: 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--gray); min-height: 18px; text-align:center; }
 
-  .panel {
-    margin-top: 18px;
-    width: 100%;
-    max-width: 720px;
-    border-top: 1px solid var(--line);
-    padding-top: 20px;
-    min-height: 50px;
-    font-size: 17px;
-    line-height: 1.6;
-    font-weight: 400;
-  }
-  .panel .you {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--gray);
-    margin-bottom: 6px;
-  }
+  .panel { margin-top: 18px; width: 100%; max-width: 720px; border-top: 1px solid var(--line); padding-top: 20px; min-height: 50px; font-size: 17px; line-height: 1.6; font-weight: 400; }
+  .panel .you { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--gray); margin-bottom: 6px; }
   .panel .you-text { color: var(--gray); margin-bottom: 18px; white-space: pre-wrap; }
-  .panel .mit-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--white);
-    margin-bottom: 6px;
-  }
+  .panel .mit-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--white); margin-bottom: 6px; }
 
-  .mini-controls {
-    margin-top: 12px;
-    display:flex;
-    gap:8px;
-    align-items:center;
-    justify-content:center;
-    width:100%;
-  }
+  .mini-controls { margin-top: 12px; display:flex; gap:8px; align-items:center; justify-content:center; width:100%; }
   .hidden { display:none; }
-  .fallback-input {
-    margin-top:12px;
-    display:flex;
-    gap:8px;
-    justify-content:center;
-    width:100%;
-  }
-  .fallback-input input[type="text"] {
-    width: calc(100% - 110px);
-    max-width:420px;
-    padding:8px 10px;
-    border-radius:8px;
-    border:1px solid var(--line);
-    background: rgba(255,255,255,0.02);
-    color:var(--white);
-  }
-  .btn {
-    background: transparent;
-    border: 1px solid var(--line);
-    color: var(--white);
-    padding: 6px 10px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-family: inherit;
-  }
+  .fallback-input { margin-top:12px; display:flex; gap:8px; justify-content:center; width:100%; }
+  .fallback-input input[type="text"] { width: calc(100% - 110px); max-width:420px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); background: rgba(255,255,255,0.02); color:var(--white); }
+  .btn { background: transparent; border: 1px solid var(--line); color: var(--white); padding: 6px 10px; border-radius: 8px; cursor: pointer; font-family: inherit; }
   .note { font-size:13px; color:var(--gray); margin-top:8px; text-align:center; }
-  select, .btn-small {
-    background: transparent;
-    color: var(--white);
-    border: 1px solid var(--line);
-    padding: 6px 8px;
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 13px;
-  }
+  select, .btn-small { background: transparent; color: var(--white); border: 1px solid var(--line); padding: 6px 8px; border-radius: 6px; font-family: inherit; font-size: 13px; }
   .voice-warning { color: #ffcc00; font-size: 12px; margin-top: 8px; text-align:center; }
   .retry-btn { margin-left:8px; border-color: var(--accent); color: var(--accent); }
+  .recording-dot { width:10px; height:10px; border-radius:50%; background:#ff4d4f; display:inline-block; margin-left:8px; vertical-align:middle; box-shadow:0 0 8px rgba(255,77,79,0.6); }
 </style>
 </head>
 <body>
@@ -173,6 +76,8 @@
     <select id="voiceSelect" title="Selecciona la voz"></select>
     <button class="btn" id="stopBtn" title="Detener lectura">Parar</button>
     <button class="btn retry-btn hidden" id="retryBtn" title="Reintentar última pregunta">Reintentar</button>
+    <button class="btn" id="recordBtn" title="Grabar (iOS & fallback)">Grabar</button>
+    <span id="recordIndicator" class="hidden" aria-hidden="true"><span class="recording-dot"></span></span>
   </div>
   <div class="voice-warning hidden" id="voiceWarning">No se han encontrado voces en español; el navegador usará la voz por defecto.</div>
 
@@ -182,7 +87,7 @@
   </div>
 
   <div class="note hidden" id="noteUnsupported">
-    Tu navegador no soporta reconocimiento por voz. En iOS Safari la API no está disponible; usa Chrome en Android o escribe el mensaje.
+    Tu navegador no soporta reconocimiento por voz. En iOS Safari la API no está disponible; usa Chrome en Android o graba audio.
   </div>
 
   <div class="panel" id="panel">
@@ -191,12 +96,12 @@
   </div>
 
   <script>
-    // Configuración fija (no editable desde la interfaz)
+    // Configuration
     const WORKER_URL = 'https://mi-asistente.deivid7575.workers.dev';
     const USER_ID = '1121764396532781207';
     const CHANNEL_ID = '1536519525489573928';
 
-    // UI elements
+    // Elements
     const orb = document.getElementById('orb');
     const statusEl = document.getElementById('status');
     const panel = document.getElementById('panel');
@@ -208,25 +113,26 @@
     const voiceSelect = document.getElementById('voiceSelect');
     const voiceWarningEl = document.getElementById('voiceWarning');
     const retryBtn = document.getElementById('retryBtn');
+    const recordBtn = document.getElementById('recordBtn');
+    const recordIndicator = document.getElementById('recordIndicator');
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition = null;
     let recognitionSupported = !!SpeechRecognition;
 
-    if (recognitionSupported) {
-      recognition = new SpeechRecognition();
-      recognition.lang = 'es-ES';
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-    } else {
-      fallbackInput.classList.remove('hidden');
-      noteUnsupported.classList.remove('hidden');
+    function makeRecognition() {
+      if (!SpeechRecognition) return null;
+      const r = new SpeechRecognition();
+      r.lang = 'es-ES';
+      r.interimResults = false;
+      r.maxAlternatives = 1;
+      return r;
     }
 
     // TTS & voices
     let voices = [];
     let currentUtterance = null;
-    let lastPrompt = ''; // for retry
+    let lastPrompt = '';
+
     function loadVoices() { voices = speechSynthesis.getVoices() || []; populateVoiceList(); }
     function populateVoiceList() {
       voiceSelect.innerHTML = '';
@@ -294,7 +200,17 @@
       panel.innerHTML = `${you ? `<div class="you">Tú</div><div class="you-text">${escapeHtml(you)}</div>` : ''}<div class="mit-label">Mit</div><div>${escapeHtml(mit)}</div>`;
     }
 
-    // Send to worker + manage retry heuristics
+    async function processPromptOnServer(promptText) {
+      try {
+        const res = await fetch(WORKER_URL + '/api/voice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: USER_ID, channelId: CHANNEL_ID, promptText })
+        });
+        return await res.json();
+      } catch (err) { console.error('processPromptOnServer error', err); throw err; }
+    }
+
     async function sendToMit(promptText, { saveLast=true } = {}) {
       if (saveLast) lastPrompt = promptText;
       stopSpeaking();
@@ -302,26 +218,14 @@
       renderPanel(promptText, 'Procesando...');
       statusEl.textContent = 'procesando';
       try {
-        const res = await fetch(WORKER_URL + '/api/voice', {
-          method: 'POST',
-          headers: { 'Content-Type':'application/json' },
-          body: JSON.stringify({ userId: USER_ID, channelId: CHANNEL_ID, promptText })
-        });
-        const data = await res.json();
+        const data = await processPromptOnServer(promptText);
         const respuesta = data.responseText || 'No he podido procesar eso.';
         renderPanel(promptText, respuesta);
         statusEl.textContent = 'en espera';
-
-        // If response is too generic, show retry control
         const genericResponses = ['entendido.', 'entendido', 'ok', 'vale', 'de acuerdo'];
         const normalized = (respuesta || '').trim().toLowerCase();
-        if (genericResponses.includes(normalized) || normalized.length < 10) {
-          // show retry button so user can ask again quickly
-          retryBtn.classList.remove('hidden');
-        } else {
-          retryBtn.classList.add('hidden');
-        }
-
+        if (genericResponses.includes(normalized) || normalized.length < 10) retryBtn.classList.remove('hidden');
+        else retryBtn.classList.add('hidden');
         speak(respuesta);
       } catch (err) {
         renderPanel(promptText, `Error de conexión: ${err.message || err}`);
@@ -329,58 +233,18 @@
       }
     }
 
-    // Start recognition robustly
-    async function startRecognition() {
+    function startSpeechRecognitionOnce() {
+      if (!SpeechRecognition) return;
+      const recognition = makeRecognition();
       if (!recognition) return;
       stopSpeaking();
       orb.classList.add('listening');
       statusEl.textContent = 'escuchando...';
-      try {
-        // call start asynchronously to avoid some mobile browser gesture issues
-        setTimeout(() => {
-          try { recognition.start(); } catch (e) { console.warn('recognition.start error (inner):', e); }
-        }, 0);
-      } catch (err) {
-        console.warn('recognition.start() threw:', err);
-        orb.classList.remove('listening');
-        statusEl.textContent = 'error';
-        if (err.name === 'NotAllowedError' || /permission/i.test(err.message || '')) {
-          renderPanel('', 'Permiso de micrófono denegado. Activa el micrófono en la configuración del navegador y vuelve a intentarlo.');
-        } else {
-          renderPanel('', 'No se pudo iniciar el reconocimiento. Prueba a recargar o usar otro navegador.');
-        }
-      }
-    }
 
-    // Use pointerup / touchend + click fallback
-    function attachStartHandlers() {
-      orb.addEventListener('pointerup', (e) => {
-        e.preventDefault();
-        if (!recognition) {
-          if (!fallbackInput.classList.contains('hidden')) typedInput.focus();
-          return;
-        }
-        if (!orb.classList.contains('listening')) startRecognition();
-      }, { passive: false });
-
-      // older browsers
-      orb.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (!recognition) {
-          if (!fallbackInput.classList.contains('hidden')) typedInput.focus();
-          return;
-        }
-        if (!orb.classList.contains('listening')) startRecognition();
-      });
-    }
-    attachStartHandlers();
-
-    // recognition events
-    if (recognition) {
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         orb.classList.remove('listening');
-        sendToMit(transcript, { saveLast: true });
+        sendToMit(transcript, { saveLast:true });
       };
       recognition.onerror = (ev) => {
         console.error('recognition error', ev);
@@ -394,95 +258,155 @@
         orb.classList.remove('listening');
         if (!currentUtterance) statusEl.textContent = 'en espera';
       };
-      recognition.onstart = () => {
-        stopSpeaking();
-      };
+      recognition.onstart = () => { stopSpeaking(); };
+
+      try { recognition.start(); } catch (err) {
+        console.warn('recognition.start error', err);
+        orb.classList.remove('listening');
+        statusEl.textContent = 'error';
+        if (err.name === 'NotAllowedError' || /permission/i.test(err.message || '')) {
+          renderPanel('', 'Permiso de micrófono denegado. Activa el micrófono en la configuración del navegador y vuelve a intentarlo.');
+        } else {
+          renderPanel('', 'No se pudo iniciar el reconocimiento. Prueba a recargar o usar otro navegador.');
+        }
+      }
     }
 
-    // Stop button: stop recognition or TTS
-    stopBtn.addEventListener('click', () => {
-      try {
-        if (recognition && orb.classList.contains('listening')) {
-          try { recognition.stop(); } catch(e) {}
-          orb.classList.remove('listening');
-          statusEl.textContent = 'en espera';
-        } else {
-          stopSpeaking();
-        }
-      } catch (e) { console.error(e); }
+    orb.addEventListener('pointerup', (e) => {
+      e.preventDefault();
+      if (!SpeechRecognition) {
+        if (!fallbackInput.classList.contains('hidden')) typedInput.focus();
+        return;
+      }
+      startSpeechRecognitionOnce();
+    }, { passive: false });
+
+    orb.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (!SpeechRecognition) {
+        if (!fallbackInput.classList.contains('hidden')) typedInput.focus();
+        return;
+      }
+      startSpeechRecognitionOnce();
     });
 
-    // Typed fallback
+    stopBtn.addEventListener('click', () => stopSpeaking());
+
     typedSend.addEventListener('click', () => {
       const text = (typedInput.value || '').trim();
       if (!text) return;
       typedInput.value = '';
       sendToMit(text, { saveLast: true });
     });
-    typedInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        typedSend.click();
-      }
-    });
+    typedInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); typedSend.click(); } });
 
-    // Retry last prompt
-    retryBtn.addEventListener('click', () => {
-      if (!lastPrompt) return;
-      sendToMit(lastPrompt, { saveLast: false });
-      retryBtn.classList.add('hidden');
-    });
+    retryBtn.addEventListener('click', () => { if (!lastPrompt) return; sendToMit(lastPrompt, { saveLast: false }); retryBtn.classList.add('hidden'); });
 
-    // Keyboard shortcuts: only when focus is not in an input/textarea/contenteditable
     window.addEventListener('keydown', (e) => {
       const target = document.activeElement;
       const tag = target && target.tagName ? target.tagName.toLowerCase() : null;
       const editable = target && (target.isContentEditable === true);
       const focusIsTextField = tag === 'input' || tag === 'textarea' || editable;
-
       if (e.code === 'Space') {
-        // if user typing in a field, don't intercept space
         if (focusIsTextField) return;
         e.preventDefault();
-        if (!recognition) {
+        if (!SpeechRecognition) {
           if (!fallbackInput.classList.contains('hidden')) typedInput.focus();
           return;
         }
-        if (orb.classList.contains('listening')) {
-          try { recognition.stop(); } catch {}
-        } else {
-          startRecognition();
-        }
+        startSpeechRecognitionOnce();
       }
-
-      if (e.code === 'Escape') {
-        stopSpeaking();
-        // also stop recognition if running
-        if (recognition && orb.classList.contains('listening')) {
-          try { recognition.stop(); } catch {}
-          orb.classList.remove('listening');
-        }
-      }
+      if (e.code === 'Escape') stopSpeaking();
     });
 
-    // On load: show fallback if unsupported; restore saved voice
+    // Recording for iOS Safari and fallback (MediaRecorder)
+    let mediaRecorder = null;
+    let audioStream = null;
+    let audioChunks = [];
+    let recording = false;
+
+    async function startRecording() {
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(audioStream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) audioChunks.push(e.data); };
+        mediaRecorder.onstop = async () => {
+          recordIndicator.classList.add('hidden');
+          recording = false;
+          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          audioChunks = [];
+          audioStream.getTracks().forEach(t => t.stop());
+          audioStream = null;
+          mediaRecorder = null;
+          await uploadAudioAndProcess(blob);
+        };
+        mediaRecorder.start();
+        recording = true;
+        recordIndicator.classList.remove('hidden');
+        statusEl.textContent = 'grabando...';
+      } catch (err) {
+        console.error('startRecording error', err);
+        renderPanel('', 'No se pudo acceder al micrófono. Comprueba permisos.');
+        statusEl.textContent = 'error';
+      }
+    }
+
+    function stopRecording() {
+      try { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); } catch (e) { console.error('stopRecording error', e); }
+    }
+
+    async function uploadAudioAndProcess(blob) {
+      stopSpeaking();
+      renderPanel('', 'Transcribiendo audio...');
+      statusEl.textContent = 'procesando';
+      try {
+        const form = new FormData();
+        form.append('file', blob, 'record.webm');
+        form.append('userId', USER_ID);
+        form.append('channelId', CHANNEL_ID);
+
+        const res = await fetch(WORKER_URL + '/api/stt', { method: 'POST', body: form });
+        const data = await res.json();
+        if (data.error) {
+          renderPanel('', `Error: ${data.error}`);
+          statusEl.textContent = 'error';
+          return;
+        }
+        const transcription = data.transcription;
+        const responseText = data.responseText || '';
+        if (transcription) {
+          renderPanel(transcription, responseText);
+          speak(responseText);
+        } else {
+          renderPanel('', responseText || 'No se obtuvo transcripción.');
+        }
+        statusEl.textContent = 'en espera';
+      } catch (err) {
+        console.error('uploadAudioAndProcess error', err);
+        renderPanel('', `Error al subir audio: ${err.message || err}`);
+        statusEl.textContent = 'error';
+      }
+    }
+
+    recordBtn.addEventListener('click', () => {
+      if (!recording) startRecording();
+      else stopRecording();
+    });
+
     window.addEventListener('load', () => {
       if (!recognitionSupported) {
         noteUnsupported.classList.remove('hidden');
         fallbackInput.classList.remove('hidden');
       }
       const saved = localStorage.getItem('mit_voice');
-      if (saved) {
-        setTimeout(() => {
-          const opt = Array.from(voiceSelect.options).find(o => o.value === saved);
-          if (opt) voiceSelect.value = saved;
-        }, 500);
-      }
+      if (saved) setTimeout(() => {
+        const opt = Array.from(voiceSelect.options).find(o => o.value === saved);
+        if (opt) voiceSelect.value = saved;
+      }, 500);
     });
 
-    // Optional: expose a manual test to check worker connectivity (dev)
-    // window.__mit_test = async (txt) => { return await sendToMit(txt || 'ping'); };
-
+    window.__mit_debug = { startRecording, stopRecording, startSpeechRecognitionOnce };
   </script>
 </body>
-</html>
+</html></html>
