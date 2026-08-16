@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #000000;
+    --white: #ffffff;
+    --gray: #6f6f6f;
+    --line: rgba(255,255,255,0.14);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'Space Grotesk', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 20px;
+  }
+
+  h1 {
+    font-weight: 700;
+    font-size: 56px;
+    letter-spacing: 4px;
+    margin: 0;
+    line-height: 1;
+  }
+  .sub {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--gray);
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 10px;
+    margin-bottom: 56px;
+  }
+
+  .orb {
+    width: 132px;
+    height: 132px;
+    border-radius: 50%;
+    border: 2px solid var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.3s ease;
+  }
+  .orb:hover { transform: scale(1.03); }
+  .orb svg { width: 40px; height: 40px; fill: var(--white); }
+
+  .orb.listening {
+    animation: pulse 1s ease-in-out infinite;
+    box-shadow: 0 0 0 rgba(255,255,255,0.4);
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.35); }
+    50% { box-shadow: 0 0 0 18px rgba(255,255,255,0); }
+  }
+
+  #status {
+    margin-top: 22px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--gray);
+    min-height: 18px;
+  }
+
+  .panel {
+    margin-top: 32px;
+    width: 100%;
+    max-width: 520px;
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+    min-height: 50px;
+    font-size: 17px;
+    line-height: 1.6;
+    font-weight: 400;
+  }
+  .panel .you {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 6px;
+  }
+  .panel .you-text { color: var(--gray); margin-bottom: 18px; }
+  .panel .mit-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--white);
+    margin-bottom: 6px;
+  }
+</style>
+</head>
+<body>
+
+  <h1>MIT</h1>
+  <div class="sub">toca para hablar</div>
+
+  <div class="orb" id="orb">
+    <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+  </div>
+
+  <div id="status">en espera</div>
+
+  <div class="panel" id="panel">
+    <div class="mit-label">Mit</div>
+    <div>Listo cuando quieras.</div>
+  </div>
+
+  <script>
+    // Configuración fija (no editable desde la interfaz)
+    const WORKER_URL = 'https://mi-asistente.deivid7575.workers.dev';
+    const USER_ID = '1121764396532781207';
+    const CHANNEL_ID = '1536519525489573928';
+
+    const orb = document.getElementById('orb');
+    const statusEl = document.getElementById('status');
+    const panel = document.getElementById('panel');
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'es-ES';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+    }
+
+    // --- Selección de voz masculina / grave, estilo JARVIS ---
+    let voices = [];
+    function loadVoices() { voices = speechSynthesis.getVoices(); }
+    loadVoices();
+    if (typeof speechSynthesis !== 'undefined') {
+      speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    function pickVoice() {
+      // Busca voces españolas con nombre típico masculino
+      const masculina = voices.find(v => /es/i.test(v.lang) && /(pablo|jorge|diego|male|hombre)/i.test(v.name));
+      if (masculina) return masculina;
+      // Si no hay, cualquier voz en español
+      return voices.find(v => /es/i.test(v.lang)) || null;
+    }
+
+    function speak(text) {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'es-ES';
+      utter.pitch = 0.7;   // más grave
+      utter.rate = 0.98;
+      const voice = pickVoice();
+      if (voice) utter.voice = voice;
+      speechSynthesis.speak(utter);
+    }
+
+    function renderPanel(you, mit) {
+      panel.innerHTML = `
+        ${you ? `<div class="you">Tú</div><div class="you-text">${you}</div>` : ''}
+        <div class="mit-label">Mit</div>
+        <div>${mit}</div>
+      `;
+    }
+
+    async function sendToMit(promptText) {
+      renderPanel(promptText, 'Procesando...');
+      statusEl.textContent = 'procesando';
+
+      try {
+        const res = await fetch(WORKER_URL + '/api/voice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: USER_ID, channelId: CHANNEL_ID, promptText })
+        });
+        const data = await res.json();
+        const respuesta = data.responseText || 'No he podido procesar eso.';
+        renderPanel(promptText, respuesta);
+        statusEl.textContent = 'en espera';
+        speak(respuesta);
+      } catch (err) {
+        renderPanel(promptText, `Error de conexión: ${err.message}`);
+        statusEl.textContent = 'error';
+      }
+    }
+
+    orb.addEventListener('click', () => {
+      if (!recognition) {
+        statusEl.textContent = 'voz no soportada — usa Chrome';
+        return;
+      }
+      orb.classList.add('listening');
+      statusEl.textContent = 'escuchando...';
+      recognition.start();
+    });
+
+    if (recognition) {
+      recognition.onresult = (event) => sendToMit(event.results[0][0].transcript);
+      recognition.onerror = () => { statusEl.textContent = 'no te he oído bien'; };
+      recognition.onend = () => orb.classList.remove('listening');
+    }
+  </script>
+</body>
+</html>
