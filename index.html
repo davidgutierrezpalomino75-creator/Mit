@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mit</title>
+<style>
+  :root {
+    --bg: #0a0e12;
+    --panel: #10161c;
+    --cyan: #4fd1ff;
+    --cyan-dim: #1b3a47;
+    --text: #d6e6ee;
+    --text-dim: #6b8494;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle at 50% 20%, #101a22, var(--bg) 70%);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  h1 {
+    letter-spacing: 6px;
+    font-weight: 300;
+    color: var(--cyan);
+    text-shadow: 0 0 20px rgba(79,209,255,0.5);
+    margin-bottom: 4px;
+  }
+  .sub { color: var(--text-dim); font-size: 13px; margin-bottom: 40px; }
+
+  .orb {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 2px solid var(--cyan-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: box-shadow 0.3s;
+    background: radial-gradient(circle, rgba(79,209,255,0.08), transparent 70%);
+  }
+  .orb.listening {
+    border-color: var(--cyan);
+    box-shadow: 0 0 40px rgba(79,209,255,0.6);
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 20px rgba(79,209,255,0.4); }
+    50% { box-shadow: 0 0 50px rgba(79,209,255,0.8); }
+    100% { box-shadow: 0 0 20px rgba(79,209,255,0.4); }
+  }
+  .orb svg { width: 48px; height: 48px; fill: var(--cyan); }
+
+  #status { margin-top: 24px; color: var(--text-dim); font-size: 14px; min-height: 20px; }
+
+  .panel {
+    margin-top: 32px;
+    width: 100%;
+    max-width: 480px;
+    background: var(--panel);
+    border: 1px solid var(--cyan-dim);
+    border-radius: 10px;
+    padding: 18px 20px;
+    min-height: 60px;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .panel .you { color: var(--text-dim); margin-bottom: 8px; }
+  .panel .mit { color: var(--cyan); }
+
+  .settings {
+    margin-top: 28px;
+    font-size: 12px;
+    color: var(--text-dim);
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .settings-form {
+    display: none;
+    margin-top: 12px;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 480px;
+  }
+  .settings-form.open { display: flex; }
+  .settings-form input {
+    background: var(--panel);
+    border: 1px solid var(--cyan-dim);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .settings-form button {
+    background: var(--cyan-dim);
+    color: var(--cyan);
+    border: none;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+  <h1>MIT</h1>
+  <div class="sub">Asistente personal — toca para hablar</div>
+
+  <div class="orb" id="orb">
+    <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+  </div>
+
+  <div id="status">Toca el círculo y habla</div>
+
+  <div class="panel" id="panel">Aquí aparecerá la conversación...</div>
+
+  <div class="settings" id="settingsToggle">⚙ Configurar userId / channelId de Discord</div>
+  <div class="settings-form" id="settingsForm">
+    <input id="workerUrl" placeholder="URL de tu Worker (https://tu-bot.workers.dev)">
+    <input id="userId" placeholder="Tu Discord userId">
+    <input id="channelId" placeholder="Tu Discord channelId">
+    <button id="saveSettings">Guardar</button>
+  </div>
+
+  <script>
+    const orb = document.getElementById('orb');
+    const statusEl = document.getElementById('status');
+    const panel = document.getElementById('panel');
+    const settingsToggle = document.getElementById('settingsToggle');
+    const settingsForm = document.getElementById('settingsForm');
+
+    // Cargar configuración guardada
+    const cfg = {
+      workerUrl: localStorage.getItem('mit_worker_url') || '',
+      userId: localStorage.getItem('mit_user_id') || '',
+      channelId: localStorage.getItem('mit_channel_id') || '',
+    };
+    document.getElementById('workerUrl').value = cfg.workerUrl;
+    document.getElementById('userId').value = cfg.userId;
+    document.getElementById('channelId').value = cfg.channelId;
+
+    settingsToggle.addEventListener('click', () => settingsForm.classList.toggle('open'));
+    document.getElementById('saveSettings').addEventListener('click', () => {
+      cfg.workerUrl = document.getElementById('workerUrl').value.trim().replace(/\/$/, '');
+      cfg.userId = document.getElementById('userId').value.trim();
+      cfg.channelId = document.getElementById('channelId').value.trim();
+      localStorage.setItem('mit_worker_url', cfg.workerUrl);
+      localStorage.setItem('mit_user_id', cfg.userId);
+      localStorage.setItem('mit_channel_id', cfg.channelId);
+      settingsForm.classList.remove('open');
+      statusEl.textContent = 'Configuración guardada';
+    });
+
+    // Web Speech API
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'es-ES';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+    }
+
+    function speak(text) {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'es-ES';
+      speechSynthesis.speak(utter);
+    }
+
+    async function sendToMit(promptText) {
+      if (!cfg.workerUrl || !cfg.userId || !cfg.channelId) {
+        statusEl.textContent = 'Configura primero la URL del Worker, userId y channelId';
+        settingsForm.classList.add('open');
+        return;
+      }
+      panel.innerHTML = `<div class="you">Tú: ${promptText}</div><div class="mit">Mit está pensando...</div>`;
+      statusEl.textContent = 'Procesando...';
+
+      try {
+        const res = await fetch(cfg.workerUrl + '/api/voice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: cfg.userId,
+            channelId: cfg.channelId,
+            promptText
+          })
+        });
+        const data = await res.json();
+        const respuesta = data.responseText || 'No he podido procesar eso.';
+        panel.innerHTML = `<div class="you">Tú: ${promptText}</div><div class="mit">Mit: ${respuesta}</div>`;
+        statusEl.textContent = 'Toca el círculo y habla';
+        speak(respuesta);
+      } catch (err) {
+        panel.innerHTML = `<div class="you">Tú: ${promptText}</div><div class="mit">Error: ${err.message}</div>`;
+        statusEl.textContent = 'Error al conectar con el Worker';
+      }
+    }
+
+    orb.addEventListener('click', () => {
+      if (!recognition) {
+        statusEl.textContent = 'Tu navegador no soporta reconocimiento de voz (usa Chrome)';
+        return;
+      }
+      orb.classList.add('listening');
+      statusEl.textContent = 'Escuchando...';
+      recognition.start();
+    });
+
+    if (recognition) {
+      recognition.onresult = (event) => {
+        const texto = event.results[0][0].transcript;
+        sendToMit(texto);
+      };
+      recognition.onerror = () => {
+        statusEl.textContent = 'No te he oído bien, prueba otra vez';
+      };
+      recognition.onend = () => {
+        orb.classList.remove('listening');
+      };
+    }
+  </script>
+</body>
+</html>
