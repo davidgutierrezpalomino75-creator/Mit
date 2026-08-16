@@ -60,6 +60,8 @@
   .retry-btn { margin-left:8px; border-color: var(--accent); color: var(--accent); }
   .recording-dot { width:10px; height:10px; border-radius:50%; background:#ff4d4f; display:inline-block; margin-left:8px; vertical-align:middle; box-shadow:0 0 8px rgba(255,77,79,0.6); }
   .record-controls { display:flex; gap:8px; align-items:center; }
+  .reminder-ui { margin-top: 10px; display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap; }
+  .reminder-input { padding:6px 8px; border-radius:6px; border:1px solid var(--line); background: rgba(255,255,255,0.02); color:var(--white); }
 </style>
 </head>
 <body>
@@ -99,6 +101,14 @@
     <div>Listo cuando quieras.</div>
   </div>
 
+  <div class="reminder-ui hidden" id="reminderUI">
+    <button class="btn" id="r15">En 15 min</button>
+    <button class="btn" id="r60">En 1 hora</button>
+    <button class="btn" id="rTomorrow">Mañana 9:00</button>
+    <input class="reminder-input" id="customReminder" placeholder="ej. 'mañana a las 8' o 'en 30 minutos'"/>
+    <button class="btn" id="sendCustomReminder">Enviar recordatorio</button>
+  </div>
+
   <script>
     // Configuración
     const WORKER_URL = 'https://mi-asistente.deivid7575.workers.dev';
@@ -120,6 +130,13 @@
     const recordBtn = document.getElementById('recordBtn');
     const stopRecordBtn = document.getElementById('stopRecordBtn');
     const recordIndicator = document.getElementById('recordIndicator');
+
+    const reminderUI = document.getElementById('reminderUI');
+    const r15 = document.getElementById('r15');
+    const r60 = document.getElementById('r60');
+    const rTomorrow = document.getElementById('rTomorrow');
+    const customReminder = document.getElementById('customReminder');
+    const sendCustomReminder = document.getElementById('sendCustomReminder');
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognitionSupported = !!SpeechRecognition;
@@ -179,30 +196,52 @@
       return voices.find(v => /es/i.test(v.lang)) || null;
     }
 
-    // TTS unlock + robust speak
+    // TTS unlock + robust speak with AudioContext unlock (improves iOS/Chrome)
     let ttsUnlocked = false;
+    let audioContext = null;
     function unlockTTSOnce() {
       if (ttsUnlocked) return;
       ttsUnlocked = true;
       try {
+        // WebAudio resume trick (works in many iOS webviews)
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC && !audioContext) {
+          audioContext = new AC();
+          if (audioContext.state === 'suspended') {
+            audioContext.resume().catch(()=>{});
+            // play a tiny silent buffer to ensure audio unlocking
+            try {
+              const buffer = audioContext.createBuffer(1, 1, audioContext.sampleRate);
+              const src = audioContext.createBufferSource();
+              src.buffer = buffer;
+              src.connect(audioContext.destination);
+              src.start(0);
+              setTimeout(()=>{ try { src.disconnect(); } catch(e){} }, 50);
+            } catch(e) { /* ignore */ }
+          }
+        }
+      } catch (e) {
+        console.warn('AudioContext unlock failed', e);
+      }
+      try {
+        // Also try a short utterance and cancel it
         const test = new SpeechSynthesisUtterance('.');
         speechSynthesis.speak(test);
         setTimeout(() => {
           try { speechSynthesis.cancel(); } catch (e) {}
         }, 60);
       } catch (e) {
-        console.warn('unlockTTS failed', e);
+        console.warn('unlockTTS utterance failed', e);
       }
     }
 
     ['pointerdown', 'touchend', 'click'].forEach(evt => {
       document.addEventListener(evt, function _onceForTTS(e) {
         unlockTTSOnce();
-        // keep listener (some browsers need multiple events); that's okay
       }, { passive: true, capture: true });
     });
 
-    function waitForVoices(timeout = 1200) {
+    function waitForVoices(timeout = 1400) {
       return new Promise((resolve) => {
         const v = speechSynthesis.getVoices();
         if (v && v.length) return resolve(v);
@@ -235,7 +274,7 @@
         try { unlockTTSOnce(); } catch (e) {}
       }
 
-      const available = await waitForVoices(1200);
+      const available = await waitForVoices(1400);
       voices = available.length ? available : speechSynthesis.getVoices() || voices;
 
       const utter = new SpeechSynthesisUtterance(text);
@@ -296,6 +335,7 @@
       if (saveLast) lastPrompt = promptText;
       stopSpeaking();
       retryBtn.classList.add('hidden');
+      reminderUI.classList.add('hidden');
       renderPanel(promptText, 'Procesando...');
       statusEl.textContent = 'procesando';
       try {
@@ -303,10 +343,16 @@
         const respuesta = data.responseText || 'No he podido procesar eso.';
         renderPanel(promptText, respuesta);
         statusEl.textContent = 'en espera';
-        const genericResponses = ['entendido.', 'entendido', 'ok', 'vale', 'de acuerdo'];
+
+        // If server asks for reminder time, show UI
+        if ((respuesta || '').includes('¿A qué hora quieres que te recuerde')) {
+          showReminderUI(promptText);
+        }
+
         const normalized = (respuesta || '').trim().toLowerCase();
-        if (genericResponses.includes(normalized) || normalized.length < 10) retryBtn.classList.remove('hidden');
+        if (normalized.length < 10) retryBtn.classList.remove('hidden');
         else retryBtn.classList.add('hidden');
+
         speak(respuesta);
       } catch (err) {
         renderPanel(promptText, `Error de conexión: ${err.message || err}`);
@@ -441,6 +487,7 @@
         recordIndicator.classList.remove('hidden');
         stopRecordBtn.classList.remove('hidden');
         statusEl.textContent = 'grabando...';
+        unlockTTSOnce(); // ensure audio unlocked while user interacts
       } catch (err) {
         console.error('startRecording error', err);
         renderPanel('', 'No se pudo acceder al micrófono. Comprueba permisos.');
@@ -452,6 +499,7 @@
       try { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); else { recordIndicator.classList.add('hidden'); stopRecordBtn.classList.add('hidden'); recording = false; } } catch (e) { console.error('stopRecording error', e); }
     }
 
+    // Helper: send a prompt to server but only if transcription seems valid
     async function uploadAudioAndProcess(blob, language = 'es') {
       stopSpeaking();
       renderPanel('', 'Transcribiendo audio...');
@@ -470,15 +518,33 @@
           statusEl.textContent = 'error';
           return;
         }
-        const transcription = data.transcription;
+        const transcription = (data.transcription || '').trim();
         const responseText = data.responseText || '';
-        if (transcription) {
-          renderPanel(transcription, responseText);
-          if (responseText) speak(responseText);
-        } else {
-          renderPanel('', responseText || 'No se obtuvo transcripción.');
+
+        // If transcription is empty or extremely short, prompt to retry (avoid sending 'a' or noisy bits)
+        if (!transcription || transcription.length < 3) {
+          renderPanel(transcription || '', responseText || 'No se entendió con claridad. Pulsa grabar de nuevo o escribe tu mensaje.');
+          statusEl.textContent = 'en espera';
+          // keep retry visible
+          retryBtn.classList.remove('hidden');
+          return;
         }
+
+        // Show transcription and response
+        renderPanel(transcription, responseText || 'Procesando...');
         statusEl.textContent = 'en espera';
+
+        // If server asked for reminder time, show UI
+        if ((responseText || '').includes('¿A qué hora quieres que te recuerde')) {
+          showReminderUI(transcription);
+        }
+
+        if (responseText) speak(responseText);
+        else {
+          // If no model response, but transcription exists, attempt to call /api/voice as fallback
+          try { const fallback = await processPromptOnServer(transcription); if (fallback?.responseText) { renderPanel(transcription, fallback.responseText); speak(fallback.responseText); } } catch(e){ console.warn('fallback /api/voice failed', e); }
+        }
+
       } catch (err) {
         console.error('uploadAudioAndProcess error', err);
         renderPanel('', `Error al subir audio: ${err.message || err}`);
@@ -493,6 +559,40 @@
     });
     stopRecordBtn.addEventListener('click', stopRecording);
 
+    // Reminder quick UI handlers
+    function showReminderUI(originalText) {
+      reminderUI.classList.remove('hidden');
+      // Pre-fill custom input with original text context (optional)
+      customReminder.value = '';
+      // Bind clicks will send constructed prompts to server
+    }
+    function hideReminderUI() {
+      reminderUI.classList.add('hidden');
+    }
+
+    r15.addEventListener('click', () => {
+      const prompt = 'Recuérdame en 15 minutos: ' + (lastPrompt || '');
+      hideReminderUI();
+      sendToMit(prompt);
+    });
+    r60.addEventListener('click', () => {
+      const prompt = 'Recuérdame en 60 minutos: ' + (lastPrompt || '');
+      hideReminderUI();
+      sendToMit(prompt);
+    });
+    rTomorrow.addEventListener('click', () => {
+      const prompt = 'Recuérdame mañana a las 9:00: ' + (lastPrompt || '');
+      hideReminderUI();
+      sendToMit(prompt);
+    });
+    sendCustomReminder.addEventListener('click', () => {
+      const txt = (customReminder.value || '').trim();
+      if (!txt) return;
+      const prompt = `Recuérdame ${txt}: ${lastPrompt || ''}`;
+      hideReminderUI();
+      sendToMit(prompt);
+    });
+
     window.addEventListener('load', () => {
       if (!recognitionSupported) {
         noteUnsupported.classList.remove('hidden');
@@ -505,7 +605,7 @@
       }, 500);
     });
 
-    window.__mit_debug = { startRecording, stopRecording, startSpeechRecognitionOnce };
+    window.__mit_debug = { startRecording, stopRecording, startSpeechRecognitionOnce, unlockTTSOnce };
   </script>
 </body>
 </html>
