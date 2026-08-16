@@ -59,6 +59,7 @@
   .voice-warning { color: #ffcc00; font-size: 12px; margin-top: 8px; text-align:center; }
   .retry-btn { margin-left:8px; border-color: var(--accent); color: var(--accent); }
   .recording-dot { width:10px; height:10px; border-radius:50%; background:#ff4d4f; display:inline-block; margin-left:8px; vertical-align:middle; box-shadow:0 0 8px rgba(255,77,79,0.6); }
+  .record-controls { display:flex; gap:8px; align-items:center; }
 </style>
 </head>
 <body>
@@ -76,8 +77,11 @@
     <select id="voiceSelect" title="Selecciona la voz"></select>
     <button class="btn" id="stopBtn" title="Detener lectura">Parar</button>
     <button class="btn retry-btn hidden" id="retryBtn" title="Reintentar última pregunta">Reintentar</button>
-    <button class="btn" id="recordBtn" title="Grabar (iOS & fallback)">Grabar</button>
-    <span id="recordIndicator" class="hidden" aria-hidden="true"><span class="recording-dot"></span></span>
+    <div class="record-controls">
+      <button class="btn" id="recordBtn" title="Grabar (iOS & fallback)">Grabar</button>
+      <button class="btn hidden" id="stopRecordBtn" title="Parar grabación">Parar grabación</button>
+      <span id="recordIndicator" class="hidden" aria-hidden="true"><span class="recording-dot"></span></span>
+    </div>
   </div>
   <div class="voice-warning hidden" id="voiceWarning">No se han encontrado voces en español; el navegador usará la voz por defecto.</div>
 
@@ -96,12 +100,12 @@
   </div>
 
   <script>
-    // Configuration
+    // Configuración
     const WORKER_URL = 'https://mi-asistente.deivid7575.workers.dev';
     const USER_ID = '1121764396532781207';
     const CHANNEL_ID = '1536519525489573928';
 
-    // Elements
+    // Elementos
     const orb = document.getElementById('orb');
     const statusEl = document.getElementById('status');
     const panel = document.getElementById('panel');
@@ -114,6 +118,7 @@
     const voiceWarningEl = document.getElementById('voiceWarning');
     const retryBtn = document.getElementById('retryBtn');
     const recordBtn = document.getElementById('recordBtn');
+    const stopRecordBtn = document.getElementById('stopRecordBtn');
     const recordIndicator = document.getElementById('recordIndicator');
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -128,7 +133,7 @@
       return r;
     }
 
-    // TTS & voices
+    // TTS & voces
     let voices = [];
     let currentUtterance = null;
     let lastPrompt = '';
@@ -272,6 +277,7 @@
       }
     }
 
+    // UI handlers for orb (desktop/mobile)
     orb.addEventListener('pointerup', (e) => {
       e.preventDefault();
       if (!SpeechRecognition) {
@@ -319,31 +325,50 @@
       if (e.code === 'Escape') stopSpeaking();
     });
 
-    // Recording for iOS Safari and fallback (MediaRecorder)
+    // Recording (MediaRecorder) with explicit stop button & language hint
     let mediaRecorder = null;
     let audioStream = null;
     let audioChunks = [];
     let recording = false;
+    let preferredMime = null;
+
+    // Detect best mime type for MediaRecorder
+    if (typeof MediaRecorder !== 'undefined') {
+      const mimeCandidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/wav'];
+      for (const m of mimeCandidates) {
+        try {
+          if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) { preferredMime = m; break; }
+        } catch { /* ignore */ }
+      }
+    }
 
     async function startRecording() {
       try {
         audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(audioStream);
+        // Prefer explicit mime if supported
+        if (preferredMime) mediaRecorder = new MediaRecorder(audioStream, { mimeType: preferredMime });
+        else mediaRecorder = new MediaRecorder(audioStream);
         audioChunks = [];
         mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) audioChunks.push(e.data); };
         mediaRecorder.onstop = async () => {
           recordIndicator.classList.add('hidden');
+          stopRecordBtn.classList.add('hidden');
           recording = false;
-          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          // prefer extension based on mime
+          const blobType = mediaRecorder && mediaRecorder.mimeType ? mediaRecorder.mimeType : 'audio/webm';
+          const ext = blobType.includes('ogg') ? 'ogg' : blobType.includes('wav') ? 'wav' : 'webm';
+          const blob = new Blob(audioChunks, { type: blobType });
           audioChunks = [];
-          audioStream.getTracks().forEach(t => t.stop());
+          try { audioStream.getTracks().forEach(t => t.stop()); } catch {}
           audioStream = null;
           mediaRecorder = null;
-          await uploadAudioAndProcess(blob);
+          // send with language hint
+          await uploadAudioAndProcess(blob, 'es');
         };
         mediaRecorder.start();
         recording = true;
         recordIndicator.classList.remove('hidden');
+        stopRecordBtn.classList.remove('hidden');
         statusEl.textContent = 'grabando...';
       } catch (err) {
         console.error('startRecording error', err);
@@ -353,18 +378,19 @@
     }
 
     function stopRecording() {
-      try { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); } catch (e) { console.error('stopRecording error', e); }
+      try { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); else { recordIndicator.classList.add('hidden'); stopRecordBtn.classList.add('hidden'); recording = false; } } catch (e) { console.error('stopRecording error', e); }
     }
 
-    async function uploadAudioAndProcess(blob) {
+    async function uploadAudioAndProcess(blob, language = 'es') {
       stopSpeaking();
       renderPanel('', 'Transcribiendo audio...');
       statusEl.textContent = 'procesando';
       try {
         const form = new FormData();
-        form.append('file', blob, 'record.webm');
+        form.append('file', blob, 'record.' + (blob.type.includes('ogg') ? 'ogg' : blob.type.includes('wav') ? 'wav' : 'webm'));
         form.append('userId', USER_ID);
         form.append('channelId', CHANNEL_ID);
+        form.append('language', language); // hint for STT
 
         const res = await fetch(WORKER_URL + '/api/stt', { method: 'POST', body: form });
         const data = await res.json();
@@ -377,7 +403,7 @@
         const responseText = data.responseText || '';
         if (transcription) {
           renderPanel(transcription, responseText);
-          speak(responseText);
+          if (responseText) speak(responseText);
         } else {
           renderPanel('', responseText || 'No se obtuvo transcripción.');
         }
@@ -389,10 +415,12 @@
       }
     }
 
+    // Buttons
     recordBtn.addEventListener('click', () => {
       if (!recording) startRecording();
       else stopRecording();
     });
+    stopRecordBtn.addEventListener('click', stopRecording);
 
     window.addEventListener('load', () => {
       if (!recognitionSupported) {
@@ -409,4 +437,4 @@
     window.__mit_debug = { startRecording, stopRecording, startSpeechRecognitionOnce };
   </script>
 </body>
-</html></html>
+</html>
